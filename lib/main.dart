@@ -1,46 +1,74 @@
 // Importa as bibliotecas necessárias
+import 'package:eating_in_the_name_of/models/settings.dart';
 import 'package:flutter/material.dart';
-import 'package:eating_in_the_name_of/models/category.dart';
 import 'package:eating_in_the_name_of/utils/app_routes.dart';
 
 // Importa as telas que serão utilizadas na navegação
-import 'screens/categories_screen.dart';
 import 'screens/categories_meals_screen.dart';
-import 'screens/meal_detail_screen.dart'; // Importa a tela de detalhes da refeição
+import 'screens/meal_detail_screen.dart';
+import 'screens/tabs_screen.dart';
+import 'screens/settings_screen.dart';
+import 'package:eating_in_the_name_of/models/meal.dart';
+import 'package:eating_in_the_name_of/data/dummy_data.dart';
 
 void main() {
   runApp(const MyApp()); // Executa o widget MyApp
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  Settings settings = Settings();
+  List<Meal> _availableMeals = DUMMY_MEALS;
+  List<Meal> favoriteMeals = [];
+
+  void _filterMeals(Settings settings) {
+    setState(() {
+      _availableMeals = DUMMY_MEALS.where(
+        (meal) {
+          final filterGluten = settings.isGlutenFree && !meal.isGlutenFree;
+          final filterLactose = settings.isLactoseFree && !meal.isLactoseFree;
+          final filterVegan = settings.isVegan && !meal.isVegan;
+          final filterVegetarian = settings.isVegetarian && !meal.isVegetarian;
+          return !filterGluten &&
+              !filterLactose &&
+              !filterVegetarian &&
+              !filterVegan;
+        },
+      ).toList();
+    });
+  }
+
+  void _toggleFavorite(Meal meal) {
+    setState(() {
+      favoriteMeals.contains(meal)
+          ? favoriteMeals.remove(meal)
+          : favoriteMeals.add(meal);
+    });
+  }
+
+  bool isFavorite(Meal meal) {
+    return favoriteMeals.contains(meal);
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(
-          title: const Center(
-            child: Text(
-              "Let's Cook?",
-              style: TextStyle(
-                fontFamily: "Raleway",
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-          ),
-          foregroundColor: Colors.white,
-          backgroundColor: Colors.pink,
-        ),
-        body: const CategoriesScreen(),
+        body: TabsScreen(favoriteMeals),
       ),
       routes: {
-        AppRoutes.MEAL_DETAIL: (ctx) => const MealDetailScreen(), // Certo agora
-        AppRoutes.CATEGORIES_MEALS: (ctx) {
-          final category = ModalRoute.of(ctx)?.settings.arguments as Category;
-          return CategoriesMealsScreen(category);
-        },
+        AppRoutes.MEAL_DETAIL: (ctx) =>
+            MealDetailScreen(_toggleFavorite, isFavorite),
+        AppRoutes.HOME: (ctx) => TabsScreen(favoriteMeals),
+        AppRoutes.CATEGORIES_MEALS: (ctx) =>
+            CategoriesMealsScreen(_availableMeals),
+        AppRoutes.SETTINGS: (ctx) => SettingsScreen(settings, _filterMeals),
       },
     );
   }
